@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EVMS — Electronic Visitor Management System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2330;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e8eaf0;
+    --muted: #5a6072;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--surface); } ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
+
+  /* LAYOUT */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+  .logo-mark { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
+  .logo-name { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .site-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent2)22; border: 1px solid var(--accent2)55; border-radius: 4px; padding: 3px 8px; font-size: 11px; color: var(--accent2); font-family: var(--mono); margin-top: 8px; cursor: pointer; }
+  .nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .nav-section { padding: 12px 16px 4px; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; font-family: var(--mono); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; color: var(--muted); transition: all .15s; border-left: 2px solid transparent; font-weight: 500; }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent)0d; }
+  .nav-item .icon { font-size: 16px; width: 18px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-family: var(--mono); padding: 1px 5px; border-radius: 10px; }
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+  .user-pill { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 10px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* MAIN */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+  .content { padding: 24px; flex: 1; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card-sm { padding: 16px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.blue::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .stat-card.purple::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .stat-card.green::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .stat-card.amber::before { background: linear-gradient(90deg, var(--warn), transparent); }
+  .stat-label { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; font-family: var(--mono); }
+  .stat-value { font-size: 32px; font-weight: 700; font-family: var(--mono); margin-top: 6px; }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 11px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; font-family: var(--mono); font-weight: 400; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border)88; transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 11px 14px; font-size: 13.5px; vertical-align: middle; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: var(--mono); letter-spacing: .5px; }
+  .badge-green { background: var(--accent3)22; color: var(--accent3); border: 1px solid var(--accent3)44; }
+  .badge-blue { background: var(--accent)22; color: var(--accent); border: 1px solid var(--accent)44; }
+  .badge-amber { background: var(--warn)22; color: var(--warn); border: 1px solid var(--warn)44; }
+  .badge-red { background: var(--danger)22; color: var(--danger); border: 1px solid var(--danger)44; }
+  .badge-purple { background: var(--accent2)22; color: #a78bfa; border: 1px solid var(--accent2)44; }
+  .badge-gray { background: var(--muted)22; color: var(--muted); border: 1px solid var(--muted)33; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; outline: none; font-family: var(--sans); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #33eaff; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: var(--danger)22; color: var(--danger); border: 1px solid var(--danger)44; }
+  .btn-danger:hover { background: var(--danger)33; }
+  .btn-success { background: var(--accent3)22; color: var(--accent3); border: 1px solid var(--accent3)44; }
+  .btn-success:hover { background: var(--accent3)33; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-xs { padding: 3px 8px; font-size: 11px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; letter-spacing: .5px; font-family: var(--mono); }
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13.5px; font-family: var(--sans); outline: none; transition: border-color .15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent)66; }
+  input::placeholder { color: var(--muted); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--surface2); }
+
+  /* GRID UTILS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .gap-6 { gap: 24px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; } .mt-6 { margin-top: 24px; }
+  .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; } .mb-6 { margin-bottom: 24px; }
+  .text-muted { color: var(--muted); }
+  .text-sm { font-size: 12px; }
+  .text-accent { color: var(--accent); }
+  .text-danger { color: var(--danger); }
+  .text-green { color: var(--accent3); }
+  .font-mono { font-family: var(--mono); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: #000000cc; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); animation: fadeIn .15s; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; animation: slideUp .2s; }
+  .modal-lg { max-width: 780px; }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* LOGIN */
+  .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); position: relative; overflow: hidden; }
+  .login-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, var(--accent2)15 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, var(--accent)10 0%, transparent 50%); }
+  .login-grid { position: absolute; inset: 0; background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 40px 40px; opacity: .4; }
+  .login-card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 420px; box-shadow: 0 40px 80px #00000088; }
+  .login-logo { font-family: var(--mono); font-size: 10px; letter-spacing: 4px; color: var(--accent); margin-bottom: 6px; }
+  .login-title { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .login-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); gap: 0; margin-bottom: 20px; }
+  .tab { padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* VISITOR CARD */
+  .visitor-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .visitor-card:hover { border-color: var(--accent)33; }
+
+  /* RISK BADGE */
+  .risk-indicator { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-family: var(--mono); }
+  .risk-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* KIOSK MODE */
+  .kiosk { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .kiosk-inner { width: 100%; max-width: 560px; }
+
+  /* PROGRESS */
+  .progress { background: var(--surface2); border-radius: 20px; height: 6px; overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 20px; transition: width .4s; }
+
+  /* STEP INDICATOR */
+  .steps { display: flex; align-items: center; gap: 0; margin-bottom: 32px; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: var(--mono); color: var(--muted); transition: all .3s; }
+  .step-dot.active { border-color: var(--accent); color: var(--accent); background: var(--accent)15; }
+  .step-dot.done { background: var(--accent3); border-color: var(--accent3); color: #000; }
+  .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; min-width: 30px; }
+  .step-label { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* NOTIFICATION */
+  .notif { position: fixed; top: 16px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .notif-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 280px; max-width: 360px; font-size: 13px; pointer-events: all; animation: slideLeft .25s; display: flex; align-items: flex-start; gap: 10px; box-shadow: 0 10px 30px #0007; }
+  .notif-item.success { border-left: 3px solid var(--accent3); }
+  .notif-item.error { border-left: 3px solid var(--danger); }
+  .notif-item.info { border-left: 3px solid var(--accent); }
+  .notif-item.warn { border-left: 3px solid var(--warn); }
+  @keyframes slideLeft { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+  /* OCCUPANCY */
+  .occ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .occ-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .occ-pct { font-size: 22px; font-family: var(--mono); font-weight: 700; }
+  .occ-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .occ-bar { height: 4px; border-radius: 2px; margin-top: 8px; }
+
+  .search-bar { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; gap: 8px; flex: 1; }
+  .search-bar input { background: transparent; border: none; padding: 0; flex: 1; font-size: 13px; }
+  .search-bar input:focus { border: none; }
+
+  /* TOOLTIP */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; white-space: nowrap; z-index: 50; pointer-events: none; color: var(--text); }
+
+  .section-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* NDA */
+  .nda-text { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 12px; color: var(--muted); max-height: 180px; overflow-y: auto; line-height: 1.7; }
+
+  /* BADGE PRINT */
+  .badge-print { width: 320px; background: white; color: #000; border-radius: 12px; padding: 20px; font-family: var(--sans); display: flex; flex-direction: column; gap: 10px; }
+  .badge-print-header { display: flex; justify-content: space-between; align-items: flex-start; }
+
+  /* EVAC LIST */
+  .evac-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .evac-row:last-child { border-bottom: none; }
+  .evac-row.checked { background: var(--accent3)0d; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ─── SEED DATA ────────────────────────────────────────────────────
+const SITES = [
+  { id:'S1', name:'HQ — Block A', city:'Singapore' },
+  { id:'S2', name:'North Campus', city:'Singapore' },
+  { id:'S3', name:'South Hub', city:'Johor' },
+  { id:'S4', name:'East Wing', city:'Singapore' },
+  { id:'S5', name:'West Office', city:'Kuala Lumpur' },
+  { id:'S6', name:'R&D Lab', city:'Singapore' },
+  { id:'S7', name:'Data Centre', city:'Batam' },
+  { id:'S8', name:'Warehouse', city:'Tuas' },
+];
+
+const INITIAL_USERS = [
+  { id:'U1', name:'Alex Morgan', email:'admin@evms.sg', password:'admin', role:'admin', site:'S1', avatar:'AM', color:'#00e5ff' },
+  { id:'U2', name:'Dana Lee', email:'security@evms.sg', password:'security', role:'security', site:'S1', avatar:'DL', color:'#7c3aed' },
+  { id:'U3', name:'Jamie Chen', email:'host@evms.sg', password:'host', role:'host', site:'S1', avatar:'JC', color:'#10b981' },
+  { id:'U4', name:'Sam Tan', email:'viewer@evms.sg', password:'viewer', role:'viewer', site:'S2', avatar:'ST', color:'#f59e0b' },
+  { id:'U5', name:'Riley Park', email:'security2@evms.sg', password:'sec2', role:'security', site:'S2', avatar:'RP', color:'#7c3aed' },
+  { id:'U6', name:'Jordan Wu', email:'host2@evms.sg', password:'host2', role:'host', site:'S3', avatar:'JW', color:'#10b981' },
+];
+
+const PURPOSE_OPTIONS = ['Meeting','Interview','Delivery','Maintenance','Training','Inspection','Client Visit','Contractor','VIP Visit','Other'];
+const ZONE_OPTIONS = ['Reception','Meeting Rooms','Lab Level 1','Lab Level 2','Server Room','Executive Floor','Warehouse','Loading Bay'];
+
+function riskScore(v) {
+  let s = 0;
+  if(v.flagged) s += 60;
+  if(v.visitCount > 20) s += 20;
+  if(v.nda === false) s += 10;
+  if(v.requiresEscort) s += 15;
+  return Math.min(s, 100);
+}
+function riskLevel(score) {
+  if(score >= 60) return { label:'HIGH', cls:'badge-red', dot:'#ef4444' };
+  if(score >= 30) return { label:'MED', cls:'badge-amber', dot:'#f59e0b' };
+  return { label:'LOW', cls:'badge-green', dot:'#10b981' };
+}
+
+function genId() { return Math.random().toString(36).slice(2, 9).toUpperCase(); }
+
+const NOW = new Date();
+function daysAgo(d) { const dt = new Date(NOW); dt.setDate(dt.getDate()-d); return dt; }
+function formatDT(dt) {
+  if(!dt) return '—';
+  const d = new Date(dt);
+  return d.toLocaleDateString('en-SG',{day:'2-digit',month:'short'}) + ' ' + d.toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit'});
+}
+function formatDate(dt) {
+  if(!dt) return '—';
+  return new Date(dt).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function makeVisitor(overrides={}) {
+  const firstNames = ['Oliver','Sophia','Liam','Emma','Noah','Ava','James','Isabella','Lucas','Mia','Ethan','Charlotte','Mason','Amelia','Benjamin'];
+  const lastNames = ['Tan','Lee','Chen','Wong','Lim','Ng','Ong','Koh','Chua','Goh','Yap','Teo','Ho','Sim','Chan'];
+  const companies = ['Acme Corp','Nexus Solutions','Bright Systems','TechVault','InnoStream','CoreLogic','DataBridge','PrimaTech'];
+  const fn = firstNames[Math.floor(Math.random()*firstNames.length)];
+  const ln = lastNames[Math.floor(Math.random()*lastNames.length)];
+  const site = SITES[Math.floor(Math.random()*SITES.length)].id;
+  const status = Math.random() > 0.4 ? 'checked-out' : Math.random() > 0.3 ? 'checked-in' : 'pre-registered';
+  const dIn = daysAgo(Math.floor(Math.random()*14));
+  const dOut = status === 'checked-out' ? new Date(dIn.getTime() + (Math.random()*4+0.5)*3600000) : null;
+  return {
+    id: 'V'+genId(),
+    name: fn + ' ' + ln,
+    email: fn.toLowerCase()+'.'+ln.toLowerCase()+'@email.com',
+    phone: '+65 9'+Math.floor(1000000+Math.random()*8999999),
+    company: companies[Math.floor(Math.random()*companies.length)],
+    purpose: PURPOSE_OPTIONS[Math.floor(Math.random()*PURPOSE_OPTIONS.length)],
+    host: INITIAL_USERS.filter(u=>u.role==='host')[Math.floor(Math.random()*INITIAL_USERS.filter(u=>u.role==='host').length)].id,
+    zone: ZONE_OPTIONS.slice(0, Math.floor(Math.random()*3+1)),
+    site,
+    status,
+    checkIn: dIn,
+    checkOut: dOut,
+    visitCount: Math.floor(Math.random()*15),
+    flagged: Math.random() < 0.05,
+    requiresEscort: Math.random() < 0.15,
+    ndaSigned: Math.random() > 0.1,
+    healthDecl: Math.random() > 0.05,
+    parkingBay: Math.random() > 0.6 ? 'P'+Math.floor(Math.random()*50+1) : null,
+    idType: 'NRIC',
+    idNumber: 'S'+Math.floor(1000000+Math.random()*9000000)+'A',
+    photo: null,
+    risk: null,
+    fastTrack: Math.random() < 0.1,
+    contractorHours: 0,
+    notes: '',
+    ...overrides
+  };
+}
+
+const SEED_VISITORS = Array.from({length: 38}, () => makeVisitor());
+const SEED_BLACKLIST = [
+  { id:'B1', name:'John Doe', reason:'Trespassing incident', addedBy:'U1', addedAt: daysAgo(30) },
+  { id:'B2', name:'Jane Smith', reason:'Aggressive behaviour', addedBy:'U2', addedAt: daysAgo(15) },
+];
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────
+function NotificationContainer({ notifs, dismiss }) {
+  return (
+    <div className="notif">
+      {notifs.map(n => (
+        <div key={n.id} className={`notif-item ${n.type}`} onClick={()=>dismiss(n.id)}>
+          <span style={{fontSize:18}}>{n.type==='success'?'✓':n.type==='error'?'✕':n.type==='warn'?'⚠':'ℹ'}</span>
+          <div>
+            <div style={{fontWeight:600,fontSize:13}}>{n.title}</div>
+            {n.msg && <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{n.msg}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────
+function LoginScreen({ onLogin, notify }) {
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [site, setSite] = useState('S1');
+  const [err, setErr] = useState('');
+
+  const handle = () => {
+    const u = INITIAL_USERS.find(u => u.email===email && u.password===pass);
+    if(!u) { setErr('Invalid credentials'); return; }
+    notify('success','Welcome back, '+u.name.split(' ')[0]+'!');
+    onLogin({ ...u, activeSite: site });
+  };
+
+  return (
+    <div className="login-screen">
+      <div className="login-bg"/>
+      <div className="login-grid"/>
+      <div className="login-card">
+        <div className="login-logo">EVMS v2.0</div>
+        <div className="login-title">Secure Access</div>
+        <div className="login-sub">Electronic Visitor Management System</div>
+        <div className="form-group">
+          <label>Email Address</label>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="user@evms.sg" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+        </div>
+        <div className="form-group">
+          <label>Password</label>
+          <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+        </div>
+        <div className="form-group">
+          <label>Site</label>
+          <select value={site} onChange={e=>setSite(e.target.value)}>
+            {SITES.map(s=><option key={s.id} value={s.id}>{s.name} — {s.city}</option>)}
+          </select>
+        </div>
+        {err && <div style={{color:'var(--danger)',fontSize:13,marginBottom:12}}>⚠ {err}</div>}
+        <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',padding:'10px'}} onClick={handle}>Sign In →</button>
+        <div className="divider"/>
+        <div style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--mono)'}}>
+          <div style={{marginBottom:4}}>Demo Credentials:</div>
+          {INITIAL_USERS.map(u=>(
+            <div key={u.id} style={{marginBottom:2,cursor:'pointer',padding:'2px 4px',borderRadius:4,transition:'background .1s'}}
+              onClick={()=>{setEmail(u.email);setPass(u.password);setSite(u.site);}}
+              onMouseEnter={e=>e.target.style.background='var(--surface2)'} onMouseLeave={e=>e.target.style.background=''}
+            >
+              {u.email} / {u.password} [{u.role}]
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────
+function App() {
+  const [user, setUser] = useState(null);
+  const [visitors, setVisitors] = useState(SEED_VISITORS);
+  const [blacklist, setBlacklist] = useState(SEED_BLACKLIST);
+  const [users, setUsers] = useState(INITIAL_USERS);
+  const [notifs, setNotifs] = useState([]);
+  const [activePage, setActivePage] = useState('dashboard');
+  const [activeSite, setActiveSite] = useState('S1');
+  const [modal, setModal] = useState(null);
+  const notifId = useRef(0);
+
+  const notify = useCallback((type, title, msg='') => {
+    const id = ++notifId.current;
+    setNotifs(n => [...n, { id, type, title, msg }]);
+    setTimeout(() => setNotifs(n => n.filter(x=>x.id!==id)), 4000);
+  }, []);
+
+  const dismissNotif = id => setNotifs(n => n.filter(x=>x.id!==id));
+
+  const onLogin = u => { setUser(u); setActiveSite(u.activeSite||'S1'); };
+  const onLogout = () => { setUser(null); setActivePage('dashboard'); };
+
+  const siteVisitors = useMemo(() => {
+    if(!user) return [];
+    if(user.role === 'admin') return visitors;
+    return visitors.filter(v => v.site === activeSite);
+  }, [visitors, activeSite, user]);
+
+  const checked_in = siteVisitors.filter(v=>v.status==='checked-in');
+  const pre_reg = siteVisitors.filter(v=>v.status==='pre-registered');
+
+  // nav config per role
+  const navItems = useMemo(() => {
+    const all = [
+      { id:'dashboard', icon:'⬛', label:'Dashboard', roles:['admin','security','host','viewer'] },
+      { id:'checkin', icon:'▶', label:'Check In / Out', roles:['admin','security'] },
+      { id:'kiosk', icon:'⬜', label:'Kiosk Mode', roles:['admin','security'] },
+      { id:'visitors', icon:'◈', label:'Visitor Log', roles:['admin','security','host','viewer'] },
+      { id:'pre-register', icon:'◇', label:'Pre-Register', roles:['admin','security','host'] },
+      { id:'blacklist', icon:'⊗', label:'Watchlist', roles:['admin','security'] },
+      { id:'occupancy', icon:'◉', label:'Occupancy', roles:['admin','security','viewer'] },
+      { id:'evac', icon:'△', label:'Evacuation List', roles:['admin','security'] },
+      { id:'analytics', icon:'◪', label:'Analytics', roles:['admin','viewer'] },
+      { id:'contractors', icon:'◷', label:'Contractors', roles:['admin','security'] },
+      { id:'users', icon:'◑', label:'User Management', roles:['admin'] },
+      { id:'settings', icon:'◌', label:'Settings', roles:['admin'] },
+    ];
+    if(!user) return [];
+    return all.filter(x=>x.roles.includes(user.role));
+  }, [user]);
+
+  if(!user) return <>
+    <LoginScreen onLogin={onLogin} notify={notify}/>
+    <NotificationContainer notifs={notifs} dismiss={dismissNotif}/>
+  </>;
+
+  const siteObj = SITES.find(s=>s.id===activeSite) || SITES[0];
+
+  const addVisitor = (v) => { setVisitors(vs => [v, ...vs]); notify('success','Visitor registered','QR pass generated'); };
+  const updateVisitor = (v) => { setVisitors(vs => vs.map(x=>x.id===v.id?v:x)); };
+  const checkIn = (id) => {
+    setVisitors(vs => vs.map(v => v.id===id ? {...v, status:'checked-in', checkIn: new Date()} : v));
+    notify('success','Checked in','Visitor badge activated');
+  };
+  const checkOut = (id) => {
+    setVisitors(vs => vs.map(v => v.id===id ? {...v, status:'checked-out', checkOut: new Date()} : v));
+    notify('info','Checked out','Visit recorded');
+  };
+  const flagVisitor = (id) => {
+    setVisitors(vs => vs.map(v => v.id===id ? {...v, flagged:!v.flagged} : v));
+    notify('warn','Visitor flagged','Security notified');
+  };
+
+  const pages = {
+    dashboard: <DashboardPage visitors={siteVisitors} user={user} site={siteObj} checked_in={checked_in} pre_reg={pre_reg} setActivePage={setActivePage} />,
+    checkin: <CheckInPage visitors={siteVisitors} users={users} blacklist={blacklist} checkIn={checkIn} checkOut={checkOut} flagVisitor={flagVisitor} notify={notify} site={siteObj} user={user} />,
+    kiosk: <KioskPage visitors={visitors} users={users} blacklist={blacklist} site={siteObj} activeSite={activeSite} addVisitor={addVisitor} notify={notify} />,
+    visitors: <VisitorLogPage visitors={siteVisitors} users={users} user={user} checkIn={checkIn} checkOut={checkOut} flagVisitor={flagVisitor} updateVisitor={updateVisitor} notify={notify} />,
+    'pre-register': <PreRegisterPage users={users} activeSite={activeSite} addVisitor={addVisitor} notify={notify} user={user} />,
+    blacklist: <BlacklistPage blacklist={blacklist} setBlacklist={setBlacklist} user={user} notify={notify} />,
+    occupancy: <OccupancyPage visitors={visitors} sites={SITES} activeSite={activeSite} user={user} />,
+    evac: <EvacPage visitors={checked_in} site={siteObj} />,
+    analytics: <AnalyticsPage visitors={siteVisitors} user={user} sites={SITES} activeSite={activeSite} />,
+    contractors: <ContractorsPage visitors={siteVisitors.filter(v=>v.purpose==='Contractor'||v.purpose==='Maintenance')} updateVisitor={updateVisitor} />,
+    users: <UsersPage users={users} setUsers={setUsers} notify={notify} />,
+    settings: <SettingsPage sites={SITES} notify={notify} />,
+  };
+
+  return (
+    <div className="app">
+      <div className="sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-mark">EVMS</div>
+          <div className="logo-name">SecureGate</div>
+          <div className="site-badge" onClick={()=>setModal('sitepicker')}>
+            📍 {siteObj.name.split('—')[0].trim()}
+          </div>
+        </div>
+        <nav className="nav">
+          {navItems.map((item,i) => {
+            const isCheckin = item.id === 'checkin';
+            const cnt = isCheckin ? pre_reg.length : 0;
+            return (
+              <div key={item.id} className={`nav-item ${activePage===item.id?'active':''}`} onClick={()=>setActivePage(item.id)}>
+                <span className="icon">{item.icon}</span>
+                {item.label}
+                {cnt > 0 && <span className="nav-badge">{cnt}</span>}
+              </div>
+            );
+          })}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="user-pill">
+            <div className="avatar" style={{background:user.color+'33',color:user.color}}>{user.avatar}</div>
+            <div className="user-info">
+              <div className="user-name">{user.name}</div>
+              <div className="user-role">{user.role}</div>
+            </div>
+            <button className="btn btn-ghost btn-xs" onClick={onLogout} title="Sign out">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="topbar">
+          <div className="topbar-title">{navItems.find(n=>n.id===activePage)?.label||'Dashboard'}</div>
+          <div style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--mono)'}}>
+            {siteObj.name} · {new Date().toLocaleDateString('en-SG',{weekday:'short',day:'2-digit',month:'short'})}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <div className="pulse" style={{width:7,height:7,borderRadius:'50%',background:'var(--accent3)'}}/>
+            <span style={{fontSize:11,color:'var(--accent3)',fontFamily:'var(--mono)'}}>LIVE</span>
+          </div>
+        </div>
+        <div className="content">
+          {pages[activePage] || <div className="empty-state"><div className="icon">🔒</div><p>Access restricted</p></div>}
+        </div>
+      </div>
+
+      {modal==='sitepicker' && (
+        <div className="modal-overlay" onClick={()=>setModal(null)}>
+          <div className="modal" style={{maxWidth:400}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header"><span className="modal-title">Select Site</span><button className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}>✕</button></div>
+            <div className="modal-body">
+              {SITES.map(s=>(
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:8,cursor:'pointer',background:activeSite===s.id?'var(--accent)11':'',border:`1px solid ${activeSite===s.id?'var(--accent)44':'transparent'}`,marginBottom:6}}
+                  onClick={()=>{setActiveSite(s.id);setModal(null);notify('info','Site switched',s.name);}}>
+                  <div style={{width:32,height:32,background:'var(--surface2)',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🏢</div>
+                  <div><div style={{fontWeight:600,fontSize:13}}>{s.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>{s.city}</div></div>
+                  {activeSite===s.id && <span style={{marginLeft:'auto',color:'var(--accent)',fontSize:16}}>✓</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <NotificationContainer notifs={notifs} dismiss={dismissNotif}/>
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────
+function DashboardPage({ visitors, user, site, checked_in, pre_reg, setActivePage }) {
+  const today = visitors.filter(v => {
+    const d = new Date(v.checkIn);
+    const n = new Date();
+    return d.getDate()===n.getDate() && d.getMonth()===n.getMonth();
+  });
+  const flagged = visitors.filter(v=>v.flagged);
+  const checkedOut = visitors.filter(v=>v.status==='checked-out');
+
+  const recent = [...visitors].sort((a,b)=>new Date(b.checkIn)-new Date(a.checkIn)).slice(0,6);
+
+  return (
+    <div>
+      <div className="stat-grid">
+        <div className="stat-card blue">
+          <div className="stat-label">Currently Inside</div>
+          <div className="stat-value" style={{color:'var(--accent)'}}>{checked_in.length}</div>
+          <div className="stat-sub">Live occupancy</div>
+        </div>
+        <div className="stat-card purple">
+          <div className="stat-label">Pre-Registered</div>
+          <div className="stat-value" style={{color:'#a78bfa'}}>{pre_reg.length}</div>
+          <div className="stat-sub">Awaiting arrival</div>
+        </div>
+        <div className="stat-card green">
+          <div className="stat-label">Today's Visits</div>
+          <div className="stat-value" style={{color:'var(--accent3)'}}>{today.length}</div>
+          <div className="stat-sub">Total today</div>
+        </div>
+        <div className="stat-card amber">
+          <div className="stat-label">Flagged</div>
+          <div className="stat-value" style={{color:flagged.length>0?'var(--danger)':'var(--accent3)'}}>{flagged.length}</div>
+          <div className="stat-sub">Require attention</div>
+        </div>
+      </div>
+
+      <div className="grid-2 mt-6" style={{alignItems:'start'}}>
+        <div className="card">
+          <div className="section-title"><span className="dot"/> Recent Arrivals</div>
+          {recent.length === 0 && <div className="empty-state" style={{padding:'20px 0'}}><p>No visitors yet</p></div>}
+          {recent.map(v=>{
+            const score = riskScore(v);
+            const rl = riskLevel(score);
+            const host = INITIAL_USERS.find(u=>u.id===v.host);
+            return (
+              <div key={v.id} className="visitor-card mb-2">
+                <div className="avatar" style={{background:'var(--accent2)22',color:'#a78bfa',width:36,height:36,minWidth:36,fontSize:13}}>
+                  {v.name.split(' ').map(x=>x[0]).join('').slice(0,2)}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <span style={{fontWeight:600,fontSize:13}}>{v.name}</span>
+                    <span className={`badge ${v.status==='checked-in'?'badge-green':v.status==='pre-registered'?'badge-blue':'badge-gray'}`}>
+                      {v.status==='checked-in'?'● IN':v.status==='pre-registered'?'◇ PENDING':'○ OUT'}
+                    </span>
+                    {v.flagged && <span className="badge badge-red">⚠ FLAGGED</span>}
+                  </div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginTop:3}}>{v.company} · {v.purpose}</div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{formatDT(v.checkIn)} · Host: {host?.name||'—'}</div>
+                </div>
+                <div className="risk-indicator">
+                  <div className="risk-dot" style={{background:rl.dot}}/>
+                  <span style={{fontSize:10,fontFamily:'var(--mono)',color:rl.dot}}>{rl.label}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="card">
+            <div className="section-title"><span className="dot" style={{background:'var(--warn)'}}/> Quick Actions</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}} onClick={()=>setActivePage('kiosk')}>⬜ Launch Kiosk Mode</button>
+              <button className="btn btn-ghost" style={{width:'100%',justifyContent:'center'}} onClick={()=>setActivePage('checkin')}>▶ Check In Visitor</button>
+              <button className="btn btn-ghost" style={{width:'100%',justifyContent:'center'}} onClick={()=>setActivePage('pre-register')}>◇ Pre-Register Visitor</button>
+              <button className="btn btn-ghost" style={{width:'100%',justifyContent:'center'}} onClick={()=>setActivePage('evac')}>△ View Evacuation List</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="section-title"><span className="dot" style={{background:'var(--accent3)'}}/> Site Overview — {site.name}</div>
+            <div className="occ-grid">
+              {ZONE_OPTIONS.slice(0,6).map((z,i) => {
+                const cnt = checked_in.filter(v=>v.zone?.includes(z)).length;
+                const max = 20;
+                const pct = Math.min(100,Math.round((cnt/max)*100));
+                const col = pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--warn)' : 'var(--accent3)';
+                return (
+                  <div key={z} className="occ-cell">
+                    <div className="occ-pct" style={{color:col}}>{pct}%</div>
+                    <div className="occ-label">{z}</div>
+                    <div className="occ-bar" style={{background:'var(--border)'}}>
+                      <div style={{width:pct+'%',height:'100%',background:col,borderRadius:2,transition:'width .5s'}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CHECK IN/OUT ────────────────────────────────────────────────
+function CheckInPage({ visitors, users, blacklist, checkIn, checkOut, flagVisitor, notify, site, user }) {
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState('pending');
+
+  const pending = visitors.filter(v=>v.status==='pre-registered');
+  const inSide = visitors.filter(v=>v.status==='checked-in');
+  const all = visitors;
+
+  const filter = (list) => {
+    if(!search) return list;
+    const q = search.toLowerCase();
+    return list.filter(v=>v.name.toLowerCase().includes(q)||v.company.toLowerCase().includes(q)||v.id.toLowerCase().includes(q));
+  };
+
+  const lists = { pending: filter(pending), inside: filter(inSide), all: filter(all) };
+  const current = lists[tab];
+
+  const isBlacklisted = (name) => blacklist.some(b => name.toLowerCase().includes(b.name.split(' ')[0].toLowerCase()));
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="search-bar">
+          <span style={{color:'var(--muted)'}}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, company, or visitor ID…"/>
+        </div>
+      </div>
+
+      <div className="tabs">
+        <div className={`tab ${tab==='pending'?'active':''}`} onClick={()=>setTab('pending')}>
+          Pre-Registered ({pending.length})
+        </div>
+        <div className={`tab ${tab==='inside'?'active':''}`} onClick={()=>setTab('inside')}>
+          Checked In ({inSide.length})
+        </div>
+        <div className={`tab ${tab==='all'?'active':''}`} onClick={()=>setTab('all')}>
+          All Visitors
+        </div>
+      </div>
+
+      {current.length === 0 && <div className="empty-state"><div className="icon">◇</div><p>No visitors found</p></div>}
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Visitor</th>
+              <th>Company</th>
+              <th>Purpose</th>
+              <th>Host</th>
+              <th>Zone</th>
+              <th>Time</th>
+              <th>Risk</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {current.map(v=>{
+              const score = riskScore(v);
+              const rl = riskLevel(score);
+              const host = users.find(u=>u.id===v.host);
+              const bl = isBlacklisted(v.name);
+              return (
+                <tr key={v.id} style={{background:bl?'var(--danger)0a':v.flagged?'var(--warn)0a':''}}>
+                  <td>
+                    <div style={{fontWeight:600,fontSize:13}}>{v.name}</div>
+                    <div style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--mono)'}}>{v.id}</div>
+                    {bl && <span className="badge badge-red" style={{marginTop:3}}>⛔ WATCHLIST</span>}
+                    {v.fastTrack && <span className="badge badge-green" style={{marginTop:3}}>⚡ FAST TRACK</span>}
+                    {v.requiresEscort && <span className="badge badge-amber" style={{marginTop:3}}>👁 ESCORT</span>}
+                  </td>
+                  <td style={{fontSize:13,color:'var(--muted)'}}>{v.company}</td>
+                  <td><span className="badge badge-purple">{v.purpose}</span></td>
+                  <td style={{fontSize:13}}>{host?.name||'—'}</td>
+                  <td style={{fontSize:12,color:'var(--muted)'}}>{v.zone?.slice(0,2).join(', ')}</td>
+                  <td style={{fontSize:12,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDT(v.checkIn)}</td>
+                  <td>
+                    <div className="risk-indicator">
+                      <div className="risk-dot" style={{background:rl.dot}}/>
+                      <span style={{fontSize:11,fontFamily:'var(--mono)',color:rl.dot}}>{rl.label} {score}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${v.status==='checked-in'?'badge-green':v.status==='pre-registered'?'badge-blue':'badge-gray'}`}>
+                      {v.status==='checked-in'?'● IN':v.status==='pre-registered'?'◇ PENDING':'○ OUT'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex gap-2">
+                      {v.status==='pre-registered' && (
+                        <button className="btn btn-success btn-xs" onClick={()=>checkIn(v.id)}>Check In</button>
+                      )}
+                      {v.status==='checked-in' && (
+                        <button className="btn btn-ghost btn-xs" onClick={()=>checkOut(v.id)}>Check Out</button>
+                      )}
+                      <button className={`btn btn-xs ${v.flagged?'btn-danger':'btn-ghost'}`} onClick={()=>flagVisitor(v.id)} title={v.flagged?'Unflag':'Flag'}>
+                        {v.flagged?'⚠':'⚑'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── KIOSK MODE ──────────────────────────────────────────────────
+function KioskPage({ visitors, users, blacklist, site, activeSite, addVisitor, notify }) {
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({ name:'', email:'', phone:'', company:'', idType:'NRIC', idNumber:'', purpose:'Meeting', host:'', zone:[], ndaSigned:false, healthDecl:false, healthQ1:false, healthQ2:false, healthQ3:false });
+  const [done, setDone] = useState(null);
+
+  const hosts = users.filter(u=>u.role==='host'||u.role==='admin');
+  const STEPS = ['Identity','Purpose','Health Decl.','NDA','Confirm'];
+
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const toggleZone = z => set('zone', form.zone.includes(z)?form.zone.filter(x=>x!==z):[...form.zone,z]);
+
+  const isBlacklisted = () => blacklist.some(b => form.name.toLowerCase().includes(b.name.split(' ')[0].toLowerCase()));
+
+  const submit = () => {
+    if(isBlacklisted()) {
+      notify('error','Entry Denied','Visitor name matches watchlist. Security notified.');
+      setStep(0);
+      setForm({ name:'', email:'', phone:'', company:'', idType:'NRIC', idNumber:'', purpose:'Meeting', host:'', zone:[], ndaSigned:false, healthDecl:false, healthQ1:false, healthQ2:false, healthQ3:false });
+      return;
+    }
+    const v = makeVisitor({
+      ...form,
+      id: 'V'+genId(),
+      site: activeSite,
+      status: 'pre-registered',
+      checkIn: new Date(),
+      visitCount: visitors.filter(x=>x.email===form.email).length + 1,
+      fastTrack: visitors.filter(x=>x.email===form.email&&x.status==='checked-out').length > 5,
+      ndaSigned: form.ndaSigned,
+      healthDecl: form.healthQ1&&form.healthQ2&&form.healthQ3,
+      parkingBay: 'P'+Math.floor(Math.random()*50+1),
+      risk: null,
+    });
+    addVisitor(v);
+    setDone(v);
+    setStep(5);
+  };
+
+  const reset = () => { setStep(0); setDone(null); setForm({ name:'', email:'', phone:'', company:'', idType:'NRIC', idNumber:'', purpose:'Meeting', host:'', zone:[], ndaSigned:false, healthDecl:false, healthQ1:false, healthQ2:false, healthQ3:false }); };
+
+  const canNext = [
+    form.name && form.email && form.idNumber,
+    form.purpose && form.host && form.zone.length > 0,
+    form.healthQ1 && form.healthQ2 && form.healthQ3,
+    form.ndaSigned,
+    true
+  ];
+
+  if(step === 5 && done) return (
+    <div className="kiosk">
+      <div className="kiosk-inner" style={{textAlign:'center'}}>
+        <div style={{fontSize:60,marginBottom:20}}>✅</div>
+        <div style={{fontSize:24,fontWeight:700,marginBottom:8}}>Registration Complete</div>
+        <div style={{color:'var(--muted)',marginBottom:24,fontSize:14}}>Please wait for your host to escort you.</div>
+        <div className="card" style={{textAlign:'left',marginBottom:20,background:'var(--surface2)'}}>
+          <div style={{display:'flex',gap:16,alignItems:'center'}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:18}}>{done.name}</div>
+              <div style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--muted)',marginTop:4}}>{done.id}</div>
+              <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:6}}>
+                <span className="badge badge-blue">◇ Pending Check-in</span>
+                {done.parkingBay && <span className="badge badge-purple">🅿 Bay {done.parkingBay}</span>}
+                {done.fastTrack && <span className="badge badge-green">⚡ Fast Track</span>}
+              </div>
+              <div style={{marginTop:8,fontSize:12,color:'var(--muted)'}}>{done.purpose} · {done.zone.join(', ')}</div>
+            </div>
+            <div style={{marginLeft:'auto',textAlign:'center',background:'var(--border)',borderRadius:8,padding:'12px',fontFamily:'var(--mono)',fontSize:10,color:'var(--muted)'}}>
+              [QR CODE]<br/>{done.id}
+            </div>
+          </div>
+        </div>
+        <button className="btn btn-primary" style={{width:'100%',justifyContent:'center',padding:'12px'}} onClick={reset}>
+          Register Another Visitor
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="kiosk">
+      <div className="kiosk-inner">
+        <div style={{textAlign:'center',marginBottom:24}}>
+          <div style={{fontFamily:'var(--mono)',fontSize:11,letterSpacing:3,color:'var(--accent)'}}>VISITOR SELF-CHECK-IN</div>
+          <div style={{fontSize:22,fontWeight:700,marginTop:4}}>{site.name}</div>
+        </div>
+
+        <div className="steps">
+          {STEPS.map((s,i)=>(
+            <React.Fragment key={s}>
+              <div className="step">
+                <div className={`step-dot ${i===step?'active':i<step?'done':''}`}>{i<step?'✓':i+1}</div>
+                <span className="step-label" style={{display:i===step?'block':'none'}}>{s}</span>
+              </div>
+              {i<STEPS.length-1 && <div className="step-line"/>}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="card">
+          {step===0 && <>
+            <div className="section-title"><span className="dot"/>Identity Verification</div>
+            <div className="form-group"><label>Full Name *</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="As per ID"/></div>
+            <div className="grid-2">
+              <div className="form-group"><label>Email *</label><input value={form.email} onChange={e=>set('email',e.target.value)} placeholder="your@email.com"/></div>
+              <div className="form-group"><label>Phone</label><input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="+65 9xxx xxxx"/></div>
+            </div>
+            <div className="form-group"><label>Company / Organisation</label><input value={form.company} onChange={e=>set('company',e.target.value)} placeholder="Your company name"/></div>
+            <div className="grid-2">
+              <div className="form-group"><label>ID Type</label><select value={form.idType} onChange={e=>set('idType',e.target.value)}><option>NRIC</option><option>Passport</option><option>FIN</option><option>Work Pass</option></select></div>
+              <div className="form-group"><label>ID Number *</label><input value={form.idNumber} onChange={e=>set('idNumber',e.target.value)} placeholder="S1234567A"/></div>
+            </div>
+          </>}
+
+          {step===1 && <>
+            <div className="section-title"><span className="dot"/>Visit Purpose</div>
+            <div className="form-group"><label>Purpose of Visit *</label><select value={form.purpose} onChange={e=>set('purpose',e.target.value)}>{PURPOSE_OPTIONS.map(p=><option key={p}>{p}</option>)}</select></div>
+            <div className="form-group"><label>Who are you visiting? *</label><select value={form.host} onChange={e=>set('host',e.target.value)}><option value="">-- Select Host --</option>{hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
+            <div className="form-group">
+              <label>Access Zones Required *</label>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:4}}>
+                {ZONE_OPTIONS.map(z=>(
+                  <div key={z} onClick={()=>toggleZone(z)} style={{padding:'6px 12px',borderRadius:20,fontSize:12,cursor:'pointer',border:`1px solid ${form.zone.includes(z)?'var(--accent)':'var(--border)'}`,background:form.zone.includes(z)?'var(--accent)15':'',color:form.zone.includes(z)?'var(--accent)':'var(--muted)',transition:'all .15s'}}>
+                    {z}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {step===2 && <>
+            <div className="section-title"><span className="dot"/>Health & Safety Declaration</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Please confirm all health declarations to proceed.</div>
+            {[
+              ['healthQ1','I am free from fever, cough, sore throat, or respiratory illness.'],
+              ['healthQ2','I have not been in close contact with a confirmed COVID-19 case in the last 14 days.'],
+              ['healthQ3','I agree to comply with all on-site health & safety regulations.'],
+            ].map(([k,label])=>(
+              <div key={k} onClick={()=>set(k,!form[k])} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px',borderRadius:8,border:`1px solid ${form[k]?'var(--accent3)44':'var(--border)'}`,background:form[k]?'var(--accent3)0a':'',cursor:'pointer',marginBottom:10,transition:'all .15s'}}>
+                <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${form[k]?'var(--accent3)':'var(--border)'}`,background:form[k]?'var(--accent3)':'',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1,fontSize:12,color:'#000'}}>
+                  {form[k]&&'✓'}
+                </div>
+                <span style={{fontSize:13,lineHeight:1.5}}>{label}</span>
+              </div>
+            ))}
+          </>}
+
+          {step===3 && <>
+            <div className="section-title"><span className="dot"/>Non-Disclosure Agreement</div>
+            <div className="nda-text">
+              <strong>VISITOR NON-DISCLOSURE AGREEMENT</strong><br/><br/>
+              This Non-Disclosure Agreement ("Agreement") is entered into by the visitor identified herein and the Organization ("Company").<br/><br/>
+              <strong>1. Confidential Information.</strong> During the visit, the Visitor may be exposed to confidential and proprietary information belonging to the Company, including but not limited to technical data, trade secrets, business operations, personnel matters, and any information designated as confidential.<br/><br/>
+              <strong>2. Non-Disclosure Obligation.</strong> The Visitor agrees to hold all Confidential Information in strict confidence, not to disclose it to any third parties, and not to use it for any purpose other than the stated purpose of the visit.<br/><br/>
+              <strong>3. Duration.</strong> This obligation shall remain in force for a period of five (5) years from the date of the visit.<br/><br/>
+              <strong>4. Return of Information.</strong> Any documents, samples, or materials received during the visit must be returned to the Company upon request.<br/><br/>
+              <strong>5. Governing Law.</strong> This Agreement shall be governed by the laws of the Republic of Singapore.<br/><br/>
+              By checking below, you agree to be bound by the terms of this Agreement.
+            </div>
+            <div onClick={()=>set('ndaSigned',!form.ndaSigned)} style={{display:'flex',gap:12,alignItems:'center',padding:'12px',borderRadius:8,border:`1px solid ${form.ndaSigned?'var(--accent3)44':'var(--border)'}`,background:form.ndaSigned?'var(--accent3)0a':'',cursor:'pointer',marginTop:12,transition:'all .15s'}}>
+              <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${form.ndaSigned?'var(--accent3)':'var(--border)'}`,background:form.ndaSigned?'var(--accent3)':'',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:12,color:'#000'}}>
+                {form.ndaSigned&&'✓'}
+              </div>
+              <span style={{fontSize:13}}>I have read and agree to the Non-Disclosure Agreement. I understand this constitutes a legally binding electronic signature.</span>
+            </div>
+          </>}
+
+          {step===4 && <>
+            <div className="section-title"><span className="dot"/>Confirm Details</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {[['Full Name',form.name],['Email',form.email],['Phone',form.phone||'—'],['Company',form.company||'—'],['ID',`${form.idType}: ${form.idNumber}`],['Purpose',form.purpose],['Zones',form.zone.join(', ')||'—'],['NDA Signed',form.ndaSigned?'Yes':'No'],['Health Decl.',form.healthQ1&&form.healthQ2&&form.healthQ3?'Confirmed':'Incomplete']].map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                  <span style={{color:'var(--muted)',fontFamily:'var(--mono)',fontSize:11}}>{k}</span>
+                  <span style={{fontWeight:500}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          <div className="flex justify-between mt-4">
+            <button className="btn btn-ghost" onClick={()=>setStep(s=>Math.max(0,s-1))} disabled={step===0}>← Back</button>
+            {step < 4
+              ? <button className="btn btn-primary" onClick={()=>setStep(s=>s+1)} disabled={!canNext[step]}>Next →</button>
+              : <button className="btn btn-primary" onClick={submit}>✓ Submit Registration</button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── VISITOR LOG ─────────────────────────────────────────────────
+function VisitorLogPage({ visitors, users, user, checkIn, checkOut, flagVisitor, updateVisitor, notify }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
+
+  const filtered = useMemo(() => {
+    let v = [...visitors].sort((a,b)=>new Date(b.checkIn)-new Date(a.checkIn));
+    if(filter !== 'all') v = v.filter(x=>x.status===filter);
+    if(search) { const q = search.toLowerCase(); v = v.filter(x=>x.name.toLowerCase().includes(q)||x.company.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||x.email.toLowerCase().includes(q)); }
+    return v;
+  }, [visitors, filter, search]);
+
+  const selV = selected ? visitors.find(v=>v.id===selected) : null;
+  const host = selV ? users.find(u=>u.id===selV.host) : null;
+
+  return (
+    <div style={{display:'flex',gap:20,height:'calc(100vh - 120px)'}}>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:12}}>
+        <div className="flex gap-3 items-center">
+          <div className="search-bar">
+            <span style={{color:'var(--muted)'}}>🔍</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search visitors…"/>
+          </div>
+          <select style={{width:160}} value={filter} onChange={e=>setFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="checked-in">Checked In</option>
+            <option value="pre-registered">Pre-Registered</option>
+            <option value="checked-out">Checked Out</option>
+          </select>
+        </div>
+        <div className="table-wrap" style={{overflow:'auto',flex:1}}>
+          <table>
+            <thead><tr><th>Visitor</th><th>Company</th><th>Purpose</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Risk</th></tr></thead>
+            <tbody>
+              {filtered.map(v=>{
+                const rl = riskLevel(riskScore(v));
+                return (
+                  <tr key={v.id} onClick={()=>setSelected(v.id)} style={{cursor:'pointer',background:selected===v.id?'var(--accent)0a':v.flagged?'var(--warn)05':''}}>
+                    <td>
+                      <div style={{fontWeight:600,fontSize:13}}>{v.name}</div>
+                      <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--muted)'}}>{v.id}</div>
+                      {v.flagged && <span className="badge badge-red" style={{fontSize:9,padding:'1px 5px'}}>⚠</span>}
+                    </td>
+                    <td style={{fontSize:12,color:'var(--muted)'}}>{v.company}</td>
+                    <td><span className="badge badge-purple" style={{fontSize:10}}>{v.purpose}</span></td>
+                    <td style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDT(v.checkIn)}</td>
+                    <td style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDT(v.checkOut)}</td>
+                    <td><span className={`badge ${v.status==='checked-in'?'badge-green':v.status==='pre-registered'?'badge-blue':'badge-gray'}`} style={{fontSize:10}}>
+                      {v.status==='checked-in'?'● IN':v.status==='pre-registered'?'◇ PENDING':'○ OUT'}
+                    </span></td>
+                    <td><span style={{fontSize:10,fontFamily:'var(--mono)',color:rl.dot}}>{rl.label}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selV && (
+        <div style={{width:320,flexShrink:0}}>
+          <div className="card" style={{height:'100%',overflow:'auto'}}>
+            <div className="flex justify-between items-center mb-3">
+              <div className="section-title" style={{margin:0}}><span className="dot"/>Visitor Details</div>
+              <button className="btn btn-ghost btn-xs" onClick={()=>setSelected(null)}>✕</button>
+            </div>
+            <div style={{textAlign:'center',padding:'16px 0',borderBottom:'1px solid var(--border)',marginBottom:16}}>
+              <div className="avatar" style={{width:56,height:56,fontSize:20,background:'var(--accent2)22',color:'#a78bfa',margin:'0 auto 8px'}}>
+                {selV.name.split(' ').map(x=>x[0]).join('').slice(0,2)}
+              </div>
+              <div style={{fontWeight:700,fontSize:16}}>{selV.name}</div>
+              <div style={{fontSize:12,color:'var(--muted)',marginTop:3}}>{selV.company}</div>
+              <div style={{marginTop:8,display:'flex',gap:6,justifyContent:'center',flexWrap:'wrap'}}>
+                <span className={`badge ${selV.status==='checked-in'?'badge-green':selV.status==='pre-registered'?'badge-blue':'badge-gray'}`}>
+                  {selV.status==='checked-in'?'● IN':selV.status==='pre-registered'?'◇ PENDING':'○ OUT'}
+                </span>
+                {selV.flagged && <span className="badge badge-red">⚠ FLAGGED</span>}
+                {selV.fastTrack && <span className="badge badge-green">⚡ FAST TRACK</span>}
+              </div>
+            </div>
+            {[
+              ['ID', selV.id],
+              ['Email', selV.email],
+              ['Phone', selV.phone],
+              ['ID Number', `${selV.idType}: ${selV.idNumber}`],
+              ['Purpose', selV.purpose],
+              ['Host', host?.name||'—'],
+              ['Zones', selV.zone?.join(', ')||'—'],
+              ['Parking', selV.parkingBay||'—'],
+              ['Check In', formatDT(selV.checkIn)],
+              ['Check Out', formatDT(selV.checkOut)],
+              ['Visit #', selV.visitCount],
+              ['NDA Signed', selV.ndaSigned?'Yes':'No'],
+              ['Health Decl', selV.healthDecl?'Confirmed':'Pending'],
+              ['Risk Score', riskScore(selV)+' ('+riskLevel(riskScore(selV)).label+')'],
+            ].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'7px 0',borderBottom:'1px solid var(--border)33'}}>
+                <span style={{color:'var(--muted)',fontFamily:'var(--mono)',fontSize:10}}>{k}</span>
+                <span style={{fontWeight:500,textAlign:'right',maxWidth:160,wordBreak:'break-all'}}>{v||'—'}</span>
+              </div>
+            ))}
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:16}}>
+              {selV.status==='pre-registered' && <button className="btn btn-success btn-sm" style={{width:'100%',justifyContent:'center'}} onClick={()=>checkIn(selV.id)}>Check In</button>}
+              {selV.status==='checked-in' && <button className="btn btn-ghost btn-sm" style={{width:'100%',justifyContent:'center'}} onClick={()=>checkOut(selV.id)}>Check Out</button>}
+              <button className={`btn btn-sm ${selV.flagged?'btn-danger':'btn-ghost'}`} style={{width:'100%',justifyContent:'center'}} onClick={()=>flagVisitor(selV.id)}>
+                {selV.flagged?'⚠ Unflag Visitor':'⚑ Flag Visitor'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PRE-REGISTER ────────────────────────────────────────────────
+function PreRegisterPage({ users, activeSite, addVisitor, notify, user }) {
+  const [form, setForm] = useState({ name:'', email:'', phone:'', company:'', purpose:'Meeting', host:user.id, zone:['Reception'], visitDate:'', idType:'NRIC', idNumber:'', requiresEscort:false, notes:'' });
+  const hosts = users.filter(u=>u.role==='host'||u.role==='admin');
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const toggleZone = z => set('zone', form.zone.includes(z)?form.zone.filter(x=>x!==z):[...form.zone,z]);
+
+  const submit = () => {
+    if(!form.name||!form.email||!form.purpose||!form.host) { notify('error','Missing fields','Please fill all required fields.'); return; }
+    const v = makeVisitor({ ...form, site: activeSite, status:'pre-registered', checkIn: form.visitDate ? new Date(form.visitDate) : new Date(), ndaSigned:false, healthDecl:false });
+    addVisitor(v);
+    setForm({ name:'', email:'', phone:'', company:'', purpose:'Meeting', host:user.id, zone:['Reception'], visitDate:'', idType:'NRIC', idNumber:'', requiresEscort:false, notes:'' });
+    notify('success','Visitor pre-registered','Host notification sent');
+  };
+
+  return (
+    <div style={{maxWidth:700}}>
+      <div className="card">
+        <div className="section-title"><span className="dot"/>Visitor Information</div>
+        <div className="grid-2">
+          <div className="form-group"><label>Full Name *</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Visitor full name"/></div>
+          <div className="form-group"><label>Email Address *</label><input value={form.email} onChange={e=>set('email',e.target.value)} placeholder="visitor@company.com"/></div>
+        </div>
+        <div className="grid-2">
+          <div className="form-group"><label>Phone</label><input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="+65 9xxx xxxx"/></div>
+          <div className="form-group"><label>Company</label><input value={form.company} onChange={e=>set('company',e.target.value)} placeholder="Organisation name"/></div>
+        </div>
+        <div className="grid-2">
+          <div className="form-group"><label>ID Type</label><select value={form.idType} onChange={e=>set('idType',e.target.value)}><option>NRIC</option><option>Passport</option><option>FIN</option><option>Work Pass</option></select></div>
+          <div className="form-group"><label>ID Number</label><input value={form.idNumber} onChange={e=>set('idNumber',e.target.value)} placeholder="S1234567A"/></div>
+        </div>
+
+        <div className="divider"/>
+        <div className="section-title"><span className="dot"/>Visit Details</div>
+        <div className="grid-2">
+          <div className="form-group"><label>Purpose *</label><select value={form.purpose} onChange={e=>set('purpose',e.target.value)}>{PURPOSE_OPTIONS.map(p=><option key={p}>{p}</option>)}</select></div>
+          <div className="form-group"><label>Host / Contact *</label><select value={form.host} onChange={e=>set('host',e.target.value)}><option value="">-- Select --</option>{hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
+        </div>
+        <div className="form-group">
+          <label>Expected Visit Date & Time</label>
+          <input type="datetime-local" value={form.visitDate} onChange={e=>set('visitDate',e.target.value)}/>
+        </div>
+        <div className="form-group">
+          <label>Access Zones</label>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:4}}>
+            {ZONE_OPTIONS.map(z=>(
+              <div key={z} onClick={()=>toggleZone(z)} style={{padding:'5px 11px',borderRadius:20,fontSize:12,cursor:'pointer',border:`1px solid ${form.zone.includes(z)?'var(--accent)':'var(--border)'}`,background:form.zone.includes(z)?'var(--accent)15':'',color:form.zone.includes(z)?'var(--accent)':'var(--muted)',transition:'all .15s'}}>
+                {z}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Notes / Special Instructions</label>
+          <textarea value={form.notes} onChange={e=>set('notes',e.target.value)} placeholder="Any special access requirements, parking needs, etc."/>
+        </div>
+        <div onClick={()=>set('requiresEscort',!form.requiresEscort)} style={{display:'flex',gap:10,alignItems:'center',cursor:'pointer',padding:'10px',borderRadius:8,border:`1px solid ${form.requiresEscort?'var(--warn)44':'var(--border)'}`,background:form.requiresEscort?'var(--warn)0a':'',marginBottom:16,transition:'all .15s'}}>
+          <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${form.requiresEscort?'var(--warn)':'var(--border)'}`,background:form.requiresEscort?'var(--warn)':'',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'#000',flexShrink:0}}>
+            {form.requiresEscort&&'✓'}
+          </div>
+          <span style={{fontSize:13}}>👁 This visitor requires an approved escort at all times</span>
+        </div>
+        <button className="btn btn-primary" onClick={submit}>◇ Pre-Register Visitor</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── BLACKLIST ──────────────────────────────────────────────────
+function BlacklistPage({ blacklist, setBlacklist, user, notify }) {
+  const [form, setForm] = useState({ name:'', reason:'' });
+  const [showAdd, setShowAdd] = useState(false);
+
+  const add = () => {
+    if(!form.name||!form.reason) { notify('error','Missing fields'); return; }
+    setBlacklist(b => [...b, { id:'B'+genId(), ...form, addedBy: user.id, addedAt: new Date() }]);
+    setForm({ name:'', reason:'' });
+    setShowAdd(false);
+    notify('warn','Added to watchlist',form.name+' has been flagged');
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <div style={{fontSize:13,color:'var(--muted)'}}>Visitors on this list will be automatically flagged during check-in.</div>
+        <button className="btn btn-danger" onClick={()=>setShowAdd(!showAdd)}>⊗ Add to Watchlist</button>
+      </div>
+
+      {showAdd && (
+        <div className="card mb-4" style={{border:'1px solid var(--danger)33',background:'var(--danger)05'}}>
+          <div className="section-title" style={{color:'var(--danger)'}}><span className="dot" style={{background:'var(--danger)'}}/>Add to Watchlist</div>
+          <div className="grid-2">
+            <div className="form-group"><label>Full Name</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Person's name"/></div>
+            <div className="form-group"><label>Reason</label><input value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="Reason for flagging"/></div>
+          </div>
+          <div className="flex gap-3">
+            <button className="btn btn-danger" onClick={add}>Add Entry</button>
+            <button className="btn btn-ghost" onClick={()=>setShowAdd(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Reason</th><th>Added By</th><th>Date Added</th><th>Actions</th></tr></thead>
+          <tbody>
+            {blacklist.map(b=>(
+              <tr key={b.id}>
+                <td style={{fontWeight:600}}><span className="badge badge-red" style={{marginRight:8}}>⛔</span>{b.name}</td>
+                <td style={{fontSize:13,color:'var(--muted)'}}>{b.reason}</td>
+                <td style={{fontSize:12}}>{INITIAL_USERS.find(u=>u.id===b.addedBy)?.name||b.addedBy}</td>
+                <td style={{fontSize:12,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDate(b.addedAt)}</td>
+                <td><button className="btn btn-ghost btn-xs" onClick={()=>{setBlacklist(bl=>bl.filter(x=>x.id!==b.id));notify('info','Removed from watchlist',b.name);}}>Remove</button></td>
+              </tr>
+            ))}
+            {blacklist.length===0 && <tr><td colSpan={5}><div className="empty-state" style={{padding:'30px 0'}}><p>Watchlist is empty</p></div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── OCCUPANCY ──────────────────────────────────────────────────
+function OccupancyPage({ visitors, sites, activeSite, user }) {
+  const checkedIn = visitors.filter(v=>v.status==='checked-in');
+  const siteData = sites.map(s => {
+    const cnt = checkedIn.filter(v=>v.site===s.id).length;
+    const max = 100;
+    const pct = Math.min(100,Math.round((cnt/max)*100));
+    return { ...s, cnt, pct };
+  });
+
+  return (
+    <div>
+      <div className="stat-grid mb-6">
+        {siteData.map(s => {
+          const col = s.pct > 80 ? 'var(--danger)' : s.pct > 50 ? 'var(--warn)' : 'var(--accent3)';
+          return (
+            <div key={s.id} className="stat-card" style={{borderTop:`2px solid ${col}`}}>
+              <div className="stat-label">{s.name}</div>
+              <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:6}}>
+                <div className="stat-value" style={{color:col,fontSize:28}}>{s.cnt}</div>
+                <div style={{fontSize:14,color:'var(--muted)'}}>visitors</div>
+              </div>
+              <div className="progress mt-2">
+                <div className="progress-bar" style={{width:s.pct+'%',background:col}}/>
+              </div>
+              <div className="stat-sub mt-2">{s.pct}% capacity · {s.city}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card">
+        <div className="section-title"><span className="dot"/>Zone Occupancy — All Sites</div>
+        <div className="occ-grid">
+          {ZONE_OPTIONS.map(z => {
+            const cnt = checkedIn.filter(v=>v.zone?.includes(z)).length;
+            const max = 15;
+            const pct = Math.min(100,Math.round((cnt/max)*100));
+            const col = pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--warn)' : 'var(--accent3)';
+            return (
+              <div key={z} className="occ-cell">
+                <div className="occ-pct" style={{color:col,fontSize:28}}>{cnt}</div>
+                <div className="occ-label">{z}</div>
+                <div className="progress mt-2">
+                  <div className="progress-bar" style={{width:pct+'%',background:col}}/>
+                </div>
+                <div style={{fontSize:10,color:'var(--muted)',marginTop:4,fontFamily:'var(--mono)'}}>{pct}% cap</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── EVACUATION ──────────────────────────────────────────────────
+function EvacPage({ visitors, site }) {
+  const [checked, setChecked] = useState({});
+  const accounted = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <div>
+      <div className="card mb-4" style={{border:'1px solid var(--danger)44',background:'var(--danger)08'}}>
+        <div className="flex justify-between items-center">
+          <div>
+            <div style={{fontWeight:700,fontSize:16,color:'var(--danger)'}}>△ Emergency Evacuation List</div>
+            <div style={{fontSize:13,color:'var(--muted)',marginTop:3}}>Site: {site.name} · {new Date().toLocaleString('en-SG')}</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--mono)',color:accounted===visitors.length?'var(--accent3)':'var(--warn)'}}>{accounted}/{visitors.length}</div>
+            <div style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--mono)'}}>ACCOUNTED</div>
+          </div>
+        </div>
+        <div className="progress mt-3">
+          <div className="progress-bar" style={{width:visitors.length?Math.round((accounted/visitors.length)*100)+'%':'0%',background:accounted===visitors.length?'var(--accent3)':'var(--warn)'}}/>
+        </div>
+      </div>
+
+      <div className="card" style={{padding:0}}>
+        {visitors.length===0 && <div className="empty-state" style={{padding:'40px 0'}}><div className="icon">✅</div><p>No visitors currently inside</p></div>}
+        {visitors.map(v => {
+          const host = INITIAL_USERS.find(u=>u.id===v.host);
+          return (
+            <div key={v.id} className={`evac-row ${checked[v.id]?'checked':''}`}>
+              <div onClick={()=>setChecked(c=>({...c,[v.id]:!c[v.id]}))} style={{width:22,height:22,borderRadius:4,border:`2px solid ${checked[v.id]?'var(--accent3)':'var(--border)'}`,background:checked[v.id]?'var(--accent3)':'',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,fontSize:13,color:'#000'}}>
+                {checked[v.id]&&'✓'}
+              </div>
+              <div className="avatar" style={{width:32,height:32,minWidth:32,background:'var(--accent2)22',color:'#a78bfa',fontSize:11}}>
+                {v.name.split(' ').map(x=>x[0]).join('').slice(0,2)}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,fontSize:13}}>{v.name}</div>
+                <div style={{fontSize:11,color:'var(--muted)'}}>{v.company} · Host: {host?.name||'—'} · {v.zone?.join(', ')}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                {v.requiresEscort && <span className="badge badge-amber" style={{fontSize:10}}>ESCORT</span>}
+                {checked[v.id] && <span className="badge badge-green" style={{fontSize:10,marginLeft:6}}>✓ SAFE</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ANALYTICS ──────────────────────────────────────────────────
+function AnalyticsPage({ visitors, user, sites, activeSite }) {
+  const chartRef = useRef(null);
+  const chartRef2 = useRef(null);
+  const chartInst = useRef(null);
+  const chartInst2 = useRef(null);
+
+  const purposes = PURPOSE_OPTIONS.map(p => ({
+    label: p,
+    count: visitors.filter(v=>v.purpose===p).length
+  })).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+
+  const last7 = Array.from({length:7},(_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-6+i);
+    const cnt = visitors.filter(v => {
+      const vd = new Date(v.checkIn);
+      return vd.getDate()===d.getDate()&&vd.getMonth()===d.getMonth();
+    }).length;
+    return { label: d.toLocaleDateString('en-SG',{weekday:'short'}), cnt };
+  });
+
+  useEffect(() => {
+    if(!chartRef.current) return;
+    if(chartInst.current) chartInst.current.destroy();
+    chartInst.current = new Chart(chartRef.current, {
+      type:'bar',
+      data:{
+        labels: last7.map(x=>x.label),
+        datasets:[{
+          label:'Visitors',
+          data: last7.map(x=>x.cnt),
+          backgroundColor: '#00e5ff33',
+          borderColor:'#00e5ff',
+          borderWidth:2,
+          borderRadius:6,
+        }]
+      },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:'#1e233055'},ticks:{color:'#5a6072'}}, y:{grid:{color:'#1e233055'},ticks:{color:'#5a6072',stepSize:1}} } }
+    });
+  }, [visitors]);
+
+  useEffect(() => {
+    if(!chartRef2.current) return;
+    if(chartInst2.current) chartInst2.current.destroy();
+    chartInst2.current = new Chart(chartRef2.current, {
+      type:'doughnut',
+      data:{
+        labels: purposes.slice(0,6).map(x=>x.label),
+        datasets:[{
+          data: purposes.slice(0,6).map(x=>x.count),
+          backgroundColor:['#00e5ff33','#7c3aed33','#10b98133','#f59e0b33','#ef444433','#a78bfa33'],
+          borderColor:['#00e5ff','#7c3aed','#10b981','#f59e0b','#ef4444','#a78bfa'],
+          borderWidth:2,
+        }]
+      },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#5a6072',font:{size:11}} } } }
+    });
+  }, [visitors]);
+
+  const totalIn = visitors.filter(v=>v.status==='checked-in').length;
+  const totalOut = visitors.filter(v=>v.status==='checked-out').length;
+  const totalPre = visitors.filter(v=>v.status==='pre-registered').length;
+  const flaggedCnt = visitors.filter(v=>v.flagged).length;
+  const repeatVisitors = visitors.filter(v=>v.visitCount>1).length;
+  const fastTrackCnt = visitors.filter(v=>v.fastTrack).length;
+  const avgDur = visitors.filter(v=>v.checkOut).reduce((a,v)=>{
+    const ms = new Date(v.checkOut)-new Date(v.checkIn);
+    return a + ms;
+  }, 0) / Math.max(1,visitors.filter(v=>v.checkOut).length);
+  const avgMins = Math.round(avgDur/60000);
+
+  return (
+    <div>
+      <div className="stat-grid mb-6">
+        <div className="stat-card blue"><div className="stat-label">Total Visitors</div><div className="stat-value" style={{color:'var(--accent)'}}>{visitors.length}</div></div>
+        <div className="stat-card green"><div className="stat-label">Repeat Visitors</div><div className="stat-value" style={{color:'var(--accent3)'}}>{repeatVisitors}</div><div className="stat-sub">{visitors.length?Math.round(repeatVisitors/visitors.length*100):0}% of all</div></div>
+        <div className="stat-card purple"><div className="stat-label">Avg Visit Duration</div><div className="stat-value" style={{color:'#a78bfa'}}>{avgMins}m</div></div>
+        <div className="stat-card amber"><div className="stat-label">Fast Track</div><div className="stat-value" style={{color:'var(--accent3)'}}>{fastTrackCnt}</div><div className="stat-sub">Trusted visitors</div></div>
+      </div>
+
+      <div className="grid-2">
+        <div className="card">
+          <div className="section-title"><span className="dot"/>Daily Visitors (Last 7 Days)</div>
+          <div className="chart-wrap"><canvas ref={chartRef}/></div>
+        </div>
+        <div className="card">
+          <div className="section-title"><span className="dot"/>Visit Purpose Breakdown</div>
+          <div className="chart-wrap"><canvas ref={chartRef2}/></div>
+        </div>
+      </div>
+
+      <div className="card mt-4">
+        <div className="section-title"><span className="dot"/>Site Comparison</div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Site</th><th>Total Visits</th><th>Currently In</th><th>Pre-Registered</th><th>Flagged</th><th>Load</th></tr></thead>
+            <tbody>
+              {sites.map(s=>{
+                const sv = visitors.filter(v=>v.site===s.id);
+                const sin = sv.filter(v=>v.status==='checked-in').length;
+                const spre = sv.filter(v=>v.status==='pre-registered').length;
+                const sflag = sv.filter(v=>v.flagged).length;
+                const pct = Math.min(100,Math.round((sin/100)*100));
+                const col = pct>80?'var(--danger)':pct>50?'var(--warn)':'var(--accent3)';
+                return (
+                  <tr key={s.id} style={{background:s.id===activeSite?'var(--accent)05':''}}>
+                    <td style={{fontWeight:s.id===activeSite?700:400}}>{s.name}{s.id===activeSite&&<span className="badge badge-blue" style={{marginLeft:8,fontSize:10}}>ACTIVE</span>}</td>
+                    <td style={{fontFamily:'var(--mono)'}}>{sv.length}</td>
+                    <td style={{fontFamily:'var(--mono)',color:'var(--accent3)'}}>{sin}</td>
+                    <td style={{fontFamily:'var(--mono)',color:'#a78bfa'}}>{spre}</td>
+                    <td style={{fontFamily:'var(--mono)',color:sflag>0?'var(--danger)':'var(--muted)'}}>{sflag}</td>
+                    <td style={{width:120}}>
+                      <div className="progress">
+                        <div className="progress-bar" style={{width:pct+'%',background:col}}/>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CONTRACTORS ──────────────────────────────────────────────────
+function ContractorsPage({ visitors, updateVisitor }) {
+  return (
+    <div>
+      <div style={{fontSize:13,color:'var(--muted)',marginBottom:16}}>Track contractor time-on-site and billable hours across visits.</div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Contractor</th><th>Company</th><th>Purpose</th><th>Site</th><th>Check In</th><th>Check Out</th><th>Duration</th><th>Total Hours</th><th>Status</th></tr></thead>
+          <tbody>
+            {visitors.map(v => {
+              const dur = v.checkOut ? Math.round((new Date(v.checkOut)-new Date(v.checkIn))/60000) : null;
+              const hours = dur ? (dur/60).toFixed(1) : null;
+              return (
+                <tr key={v.id}>
+                  <td style={{fontWeight:600}}>{v.name}</td>
+                  <td style={{fontSize:12,color:'var(--muted)'}}>{v.company}</td>
+                  <td><span className="badge badge-purple">{v.purpose}</span></td>
+                  <td style={{fontSize:12}}>{SITES.find(s=>s.id===v.site)?.name||'—'}</td>
+                  <td style={{fontSize:12,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDT(v.checkIn)}</td>
+                  <td style={{fontSize:12,fontFamily:'var(--mono)',color:'var(--muted)'}}>{formatDT(v.checkOut)}</td>
+                  <td style={{fontFamily:'var(--mono)',fontSize:13,color:dur?'var(--accent3)':'var(--muted)'}}>{dur ? dur+'m' : '—'}</td>
+                  <td style={{fontFamily:'var(--mono)',fontSize:13,color:'var(--accent)'}}>{hours ? hours+'h' : '—'}</td>
+                  <td><span className={`badge ${v.status==='checked-in'?'badge-green':v.status==='pre-registered'?'badge-blue':'badge-gray'}`}>{v.status==='checked-in'?'● IN':v.status==='pre-registered'?'◇ PENDING':'○ OUT'}</span></td>
+                </tr>
+              );
+            })}
+            {visitors.length===0 && <tr><td colSpan={9}><div className="empty-state" style={{padding:'30px 0'}}><p>No contractor visits found</p></div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── USER MANAGEMENT ─────────────────────────────────────────────
+function UsersPage({ users, setUsers, notify }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name:'', email:'', password:'', role:'host', site:'S1' });
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const add = () => {
+    if(!form.name||!form.email||!form.password) { notify('error','Missing fields'); return; }
+    const newU = { id:'U'+genId(), ...form, avatar: form.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), color:['#00e5ff','#7c3aed','#10b981','#f59e0b'][Math.floor(Math.random()*4)] };
+    setUsers(u=>[...u,newU]);
+    setForm({ name:'', email:'', password:'', role:'host', site:'S1' });
+    setShowAdd(false);
+    notify('success','User created',form.name+' added successfully');
+  };
+
+  const ROLE_COLORS = { admin:'badge-red', security:'badge-amber', host:'badge-green', viewer:'badge-gray' };
+  const ROLE_DESC = { admin:'Full system access across all sites', security:'Check-in/out, watchlist, evacuations', host:'Pre-register and manage own visitors', viewer:'Read-only dashboard and reports' };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <div style={{fontSize:13,color:'var(--muted)'}}>Manage system users and access permissions.</div>
+        <button className="btn btn-primary" onClick={()=>setShowAdd(!showAdd)}>+ Add User</button>
+      </div>
+
+      <div className="grid-2 mb-6">
+        {Object.entries(ROLE_DESC).map(([role,desc])=>(
+          <div key={role} className="card card-sm">
+            <div className="flex items-center gap-8 mb-2">
+              <span className={`badge ${ROLE_COLORS[role]}`} style={{textTransform:'capitalize'}}>{role}</span>
+              <span style={{fontSize:11,color:'var(--muted)'}}>{users.filter(u=>u.role===role).length} users</span>
+            </div>
+            <div style={{fontSize:12,color:'var(--muted)'}}>{desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {showAdd && (
+        <div className="card mb-4">
+          <div className="section-title"><span className="dot"/>New User</div>
+          <div className="grid-2">
+            <div className="form-group"><label>Full Name</label><input value={form.name} onChange={e=>set('name',e.target.value)}/></div>
+            <div className="form-group"><label>Email</label><input value={form.email} onChange={e=>set('email',e.target.value)}/></div>
+          </div>
+          <div className="grid-3">
+            <div className="form-group"><label>Password</label><input type="password" value={form.password} onChange={e=>set('password',e.target.value)}/></div>
+            <div className="form-group"><label>Role</label><select value={form.role} onChange={e=>set('role',e.target.value)}><option value="admin">Admin</option><option value="security">Security</option><option value="host">Host</option><option value="viewer">Viewer</option></select></div>
+            <div className="form-group"><label>Primary Site</label><select value={form.site} onChange={e=>set('site',e.target.value)}>{SITES.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+          </div>
+          <div className="flex gap-3"><button className="btn btn-primary" onClick={add}>Create User</button><button className="btn btn-ghost" onClick={()=>setShowAdd(false)}>Cancel</button></div>
+        </div>
+      )}
+
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Primary Site</th><th>Actions</th></tr></thead>
+          <tbody>
+            {users.map(u=>(
+              <tr key={u.id}>
+                <td>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <div className="avatar" style={{width:32,height:32,minWidth:32,background:u.color+'33',color:u.color,fontSize:12}}>{u.avatar}</div>
+                    <div><div style={{fontWeight:600,fontSize:13}}>{u.name}</div><div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--muted)'}}>{u.id}</div></div>
+                  </div>
+                </td>
+                <td style={{fontSize:13,color:'var(--muted)'}}>{u.email}</td>
+                <td><span className={`badge ${ROLE_COLORS[u.role]}`} style={{textTransform:'capitalize'}}>{u.role}</span></td>
+                <td style={{fontSize:13}}>{SITES.find(s=>s.id===u.site)?.name||'—'}</td>
+                <td>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>{setUsers(us=>us.filter(x=>x.id!==u.id));notify('info','User removed',u.name);}}>Remove</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────
+function SettingsPage({ sites, notify }) {
+  const [settings, setSettings] = useState({
+    emailNotif: true, smsNotif: false, autoCheckout: true, autoCheckoutHours: 8,
+    ndaRequired: true, healthDeclRequired: true, watchlistScreening: true,
+    riskScoring: true, fastTrackEnabled: true, fastTrackThreshold: 5,
+    parkingEnabled: true, escortEnabled: true, maxCapacity: 100,
+    retentionDays: 365, apiKey: 'evms-api-'+genId(),
+  });
+  const set = (k,v) => setSettings(s=>({...s,[k]:v}));
+
+  return (
+    <div style={{maxWidth:700}}>
+      <div className="card mb-4">
+        <div className="section-title"><span className="dot"/>Notifications</div>
+        {[['emailNotif','Email notifications to hosts on visitor arrival'],['smsNotif','SMS notifications (requires SMS gateway)']].map(([k,l])=>(
+          <div key={k} onClick={()=>set(k,!settings[k])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)33',cursor:'pointer'}}>
+            <span style={{fontSize:13}}>{l}</span>
+            <div style={{width:40,height:22,borderRadius:11,background:settings[k]?'var(--accent3)':'var(--border)',position:'relative',transition:'background .2s'}}>
+              <div style={{position:'absolute',width:18,height:18,borderRadius:9,background:'white',top:2,left:settings[k]?20:2,transition:'left .2s'}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card mb-4">
+        <div className="section-title"><span className="dot"/>Check-In Policies</div>
+        {[['ndaRequired','Require NDA signing at kiosk'],['healthDeclRequired','Require health declaration'],['watchlistScreening','Enable watchlist screening'],['riskScoring','Enable AI risk scoring'],['fastTrackEnabled','Enable Fast Track for repeat visitors'],['escortEnabled','Enable escort requirement flag']].map(([k,l])=>(
+          <div key={k} onClick={()=>set(k,!settings[k])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)33',cursor:'pointer'}}>
+            <span style={{fontSize:13}}>{l}</span>
+            <div style={{width:40,height:22,borderRadius:11,background:settings[k]?'var(--accent3)':'var(--border)',position:'relative',transition:'background .2s'}}>
+              <div style={{position:'absolute',width:18,height:18,borderRadius:9,background:'white',top:2,left:settings[k]?20:2,transition:'left .2s'}}/>
+            </div>
+          </div>
+        ))}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)33'}}>
+          <span style={{fontSize:13}}>Fast Track threshold (visits)</span>
+          <input type="number" min={1} max={50} value={settings.fastTrackThreshold} onChange={e=>set('fastTrackThreshold',+e.target.value)} style={{width:80,textAlign:'center'}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)33'}}>
+          <span style={{fontSize:13}}>Auto checkout after (hours)</span>
+          <input type="number" min={1} max={24} value={settings.autoCheckoutHours} onChange={e=>set('autoCheckoutHours',+e.target.value)} style={{width:80,textAlign:'center'}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0'}}>
+          <span style={{fontSize:13}}>Max site capacity</span>
+          <input type="number" min={10} max={1000} value={settings.maxCapacity} onChange={e=>set('maxCapacity',+e.target.value)} style={{width:80,textAlign:'center'}}/>
+        </div>
+      </div>
+
+      <div className="card mb-4">
+        <div className="section-title"><span className="dot"/>Data & Compliance</div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)33'}}>
+          <span style={{fontSize:13}}>Visitor data retention (days)</span>
+          <input type="number" min={30} max={3650} value={settings.retentionDays} onChange={e=>set('retentionDays',+e.target.value)} style={{width:80,textAlign:'center'}}/>
+        </div>
+        <div style={{padding:'12px 0'}}>
+          <div style={{fontSize:13,marginBottom:8}}>API Key (read-only integration)</div>
+          <div style={{display:'flex',gap:8}}>
+            <input value={settings.apiKey} readOnly style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--muted)'}}/>
+            <button className="btn btn-ghost btn-sm" onClick={()=>set('apiKey','evms-api-'+genId())}>Rotate</button>
+          </div>
+        </div>
+      </div>
+
+      <button className="btn btn-primary" onClick={()=>notify('success','Settings saved')}>Save Settings</button>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
