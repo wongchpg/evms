@@ -11,7 +11,7 @@
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const firebaseConfig = {
@@ -28,7 +28,7 @@
   const auth = getAuth(app);
 
   // Expose globally so Babel/React code can access
-  window._firebase = { db, auth, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, getDocs, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged };
+  window._firebase = { db, auth, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, getDocs, getDoc, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -266,10 +266,8 @@ function LoginScreen({onLogin,notify}) {
     if(!email||!pass){setErr('Please enter email and password');return;}
     setLoading(true); setErr('');
     try {
-      const {auth,signInWithEmailAndPassword,db,collection,getDocs,query} = getDB();
+      const {auth,signInWithEmailAndPassword,db,doc,getDoc} = window._firebase;
       const cred = await signInWithEmailAndPassword(auth, email, pass);
-      // Fetch user profile from Firestore
-      const {doc,getDoc} = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
       const snap = await getDoc(doc(db,'users',cred.user.uid));
       let profile = snap.exists() ? snap.data() : {name:email,role:'viewer',site:'S1'};
       onLogin({uid:cred.user.uid, email:cred.user.email, ...profile, activeSite:site});
@@ -284,11 +282,9 @@ function LoginScreen({onLogin,notify}) {
     if(!email||!pass){setErr('Please enter email and password');return;}
     setLoading(true); setErr('');
     try {
-      const {auth,createUserWithEmailAndPassword,db,setDoc,doc} = getDB();
-      // Use dynamic import for setDoc
-      const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+      const {auth,createUserWithEmailAndPassword,db,setDoc,doc} = window._firebase;
       const cred = await createUserWithEmailAndPassword(auth,email,pass);
-      await fb.setDoc(fb.doc(db,'users',cred.user.uid),{
+      await setDoc(doc(db,'users',cred.user.uid),{
         name:'Administrator', email, role:'admin', site:'S1',
         avatar:'AD', color:'#00e5ff', createdAt: new Date().toISOString()
       });
@@ -370,8 +366,8 @@ function App() {
       const {auth,onAuthStateChanged} = window._firebase;
       onAuthStateChanged(auth, async (firebaseUser)=>{
         if(firebaseUser) {
-          const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-          const snap = await fb.getDoc(fb.doc(window._firebase.db,'users',firebaseUser.uid));
+          const {db,doc,getDoc} = window._firebase;
+          const snap = await getDoc(doc(db,'users',firebaseUser.uid));
           const profile = snap.exists() ? snap.data() : {name:firebaseUser.email,role:'viewer',site:'S1'};
           setUser({uid:firebaseUser.uid,email:firebaseUser.email,...profile,activeSite:profile.site||'S1'});
           setActiveSite(profile.site||'S1');
@@ -458,69 +454,60 @@ function App() {
   // ── CRUD operations
   const addVisitor = async (v) => {
     if(!window._firebase) return;
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
+    const {db,collection,addDoc,serverTimestamp} = window._firebase;
     const {id, ...data} = v;
-    const docRef = await fb.addDoc(fb.collection(db,'visitors'), {
+    const docRef = await addDoc(collection(db,'visitors'), {
       ...data,
-      checkIn: fb.serverTimestamp(),
-      createdAt: fb.serverTimestamp(),
+      checkIn: serverTimestamp(),
+      createdAt: serverTimestamp(),
     });
     notify('success','Visitor registered','ID: '+docRef.id);
     return docRef.id;
   };
 
   const checkIn = async (id) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.updateDoc(fb.doc(db,'visitors',id),{
-      status:'checked-in', checkIn: fb.serverTimestamp()
+    const {db,doc,updateDoc,serverTimestamp} = window._firebase;
+    await updateDoc(doc(db,'visitors',id),{
+      status:'checked-in', checkIn: serverTimestamp()
     });
     notify('success','Checked in','Badge activated');
   };
 
   const checkOut = async (id) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.updateDoc(fb.doc(db,'visitors',id),{
-      status:'checked-out', checkOut: fb.serverTimestamp()
+    const {db,doc,updateDoc,serverTimestamp} = window._firebase;
+    await updateDoc(doc(db,'visitors',id),{
+      status:'checked-out', checkOut: serverTimestamp()
     });
     notify('info','Checked out','Visit recorded');
   };
 
   const updateVisitor = async (id, data) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.updateDoc(fb.doc(db,'visitors',id), data);
+    const {db,doc,updateDoc} = window._firebase;
+    await updateDoc(doc(db,'visitors',id), data);
   };
 
   const flagVisitor = async (id, current) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.updateDoc(fb.doc(db,'visitors',id),{flagged:!current});
+    const {db,doc,updateDoc} = window._firebase;
+    await updateDoc(doc(db,'visitors',id),{flagged:!current});
     notify(current?'info':'warn', current?'Visitor unflagged':'Visitor flagged');
   };
 
   const addBlacklist = async (entry) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.addDoc(fb.collection(db,'blacklist'),{...entry, addedAt: fb.serverTimestamp()});
+    const {db,collection,addDoc,serverTimestamp} = window._firebase;
+    await addDoc(collection(db,'blacklist'),{...entry, addedAt: serverTimestamp()});
     notify('warn','Added to watchlist',entry.name);
   };
 
   const removeBlacklist = async (id) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.deleteDoc(fb.doc(db,'blacklist',id));
+    const {db,doc,deleteDoc} = window._firebase;
+    await deleteDoc(doc(db,'blacklist',id));
     notify('info','Removed from watchlist');
   };
 
   const addUser = async (userData) => {
-    const {auth,createUserWithEmailAndPassword,db} = window._firebase;
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const fbAuth = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-    const cred = await fbAuth.createUserWithEmailAndPassword(auth, userData.email, userData.password);
-    await fb.setDoc(fb.doc(db,'users',cred.user.uid),{
+    const {auth,createUserWithEmailAndPassword,db,setDoc,doc} = window._firebase;
+    const cred = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+    await setDoc(doc(db,'users',cred.user.uid),{
       name:userData.name, email:userData.email, role:userData.role,
       site:userData.site, avatar:userData.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(),
       color:['#00e5ff','#7c3aed','#10b981','#f59e0b'][Math.floor(Math.random()*4)],
@@ -530,9 +517,8 @@ function App() {
   };
 
   const removeUser = async (id) => {
-    const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const {db} = window._firebase;
-    await fb.deleteDoc(fb.doc(db,'users',id));
+    const {db,doc,deleteDoc} = window._firebase;
+    await deleteDoc(doc(db,'users',id));
     notify('info','User removed');
   };
 
@@ -1457,9 +1443,8 @@ function SettingsPage({notify}) {
 
   const save = async ()=>{
     if(window._firebase) {
-      const fb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-      const {db} = window._firebase;
-      await fb.setDoc(fb.doc(db,'settings','global'),{...settings,updatedAt:fb.serverTimestamp()});
+      const {db,doc,setDoc,serverTimestamp} = window._firebase;
+      await setDoc(doc(db,'settings','global'),{...settings,updatedAt:serverTimestamp()});
     }
     notify('success','Settings saved');
   };
